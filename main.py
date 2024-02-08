@@ -93,35 +93,35 @@ def get_bmp_info(file):
 
 # 3lab
 
-def add_random_border(input_file, output_file):
-    with open(input_file, 'rb') as f:
-        header = f.read(54)
-
-        image_data = f.read()
-
-        width = int.from_bytes(header[18:22], byteorder='little')
-        height = int.from_bytes(header[22:26], byteorder='little')
-
-        new_image_data = bytearray()
-        for x in range(width):
-            for y in range(height):
-                new_image_data.extend(image_data[y * width * 3 + x * 3 : y * width * 3 + x * 3 + 3])
-
-            padding = b'\x00' * (4 - (len(new_image_data) % 4)) if len(new_image_data) % 4 != 0 else b''
-            new_image_data.extend(padding)
-
-        new_header = bytearray(header)
-        new_header[18:22] = height.to_bytes(4, byteorder='little')
-        new_header[22:26] = width.to_bytes(4, byteorder='little')
-
-        with open(output_file, 'wb') as new_f:
-            new_f.write(new_header)
-            new_f.write(new_image_data)
-
-input_file = '_сarib_TC.bmp'
-output_file = '_carib_TC_rotate.bmp'
-
-add_random_border(input_file, output_file)
+# def add_random_border(input_file, output_file):
+#     with open(input_file, 'rb') as f:
+#         header = f.read(54)
+#
+#         image_data = f.read()
+#
+#         width = int.from_bytes(header[18:22], byteorder='little')
+#         height = int.from_bytes(header[22:26], byteorder='little')
+#
+#         new_image_data = bytearray()
+#         for x in range(width):
+#             for y in range(height):
+#                 new_image_data.extend(image_data[y * width * 3 + x * 3 : y * width * 3 + x * 3 + 3])
+#
+#             padding = b'\x00' * (4 - (len(new_image_data) % 4)) if len(new_image_data) % 4 != 0 else b''
+#             new_image_data.extend(padding)
+#
+#         new_header = bytearray(header)
+#         new_header[18:22] = height.to_bytes(4, byteorder='little')
+#         new_header[22:26] = width.to_bytes(4, byteorder='little')
+#
+#         with open(output_file, 'wb') as new_f:
+#             new_f.write(new_header)
+#             new_f.write(new_image_data)
+#
+# input_file = '_сarib_TC.bmp'
+# output_file = '_carib_TC_rotate.bmp'
+#
+# add_random_border(input_file, output_file)
 
 # 5lab ДОДЕЛАТЬ
 
@@ -183,3 +183,69 @@ add_random_border(input_file, output_file)
 # print("Масштабирование завершено")
 # get_bmp_info('CAT256.BMP')
 # get_bmp_info('scaled_image_1.bmp')
+
+# lab 6
+
+# import struct
+# 
+# 
+# file = open('_сarib_TC.bmp', 'rb')
+# original_header = file.read(54)
+# original_pixels = bytearray()
+# 
+# original_width = struct.unpack('<i', original_header[18:22])[0]
+# original_height = struct.unpack('<i', original_header[22:26])[0]
+# 
+# print(original_width)
+# print(original_height)
+# 
+# 
+# old_pad = 4 - (original_width * 3) % 4
+# for y in range(original_height):
+#     original_pixels.extend(file.read(original_width * 3))
+#     if old_pad > 0 and old_pad != 4:
+#         file.read(old_pad)
+# 
+# file = open('logo.bmp', 'rb')
+# logo_header = file.read(54)
+# trash = file.read(84)
+# logo_pixels = bytearray()
+# 
+# logo_width = struct.unpack('<i', logo_header[18:22])[0]
+# logo_height = struct.unpack('<i', logo_header[22:26])[0]
+# 
+# for y in range(logo_height):
+#     for x in range(logo_width):
+#         logo_pixels.extend(file.read(3))
+#         file.read(1)
+# 
+# x_margin = 675
+# y_margin = 25
+# transparency = 0.3
+# 
+# result_pixels = bytearray()
+# 
+# for y in range(original_height):
+#     buff = bytearray()
+#     for x in range(original_width):
+#         for i in range(3):
+#             if x_margin <= x < logo_width + x_margin and y_margin <= y < logo_height + y_margin:
+#                 if logo_pixels[(y - y_margin) * logo_width * 3 + (x - x_margin) * 3 + 0] == 255 and logo_pixels[(y - y_margin) * logo_width * 3 + (x - x_margin) * 3 + 1] == 255 and logo_pixels[(y - y_margin) * logo_width * 3 + (x - x_margin) * 3 + 2] == 255:
+#                     buff.append(original_pixels[y * original_width * 3 + x * 3 + i])
+#                 else:
+#                     one_byte = int(logo_pixels[(y - y_margin) * logo_width * 3 + (x - x_margin) * 3 + i] * (1 - transparency) + original_pixels[y * original_width * 3 + x * 3 + i] * transparency)
+#                     buff.append(one_byte)
+#             else:
+#                 buff.append(original_pixels[y * original_width * 3 + x * 3 + i])
+# 
+#     if len(buff) % 4 != 0:
+#         padding = b'\x00' * (4 - (len(buff) % 4))
+#     else:
+#         padding = b''
+# 
+#     buff.extend(padding)
+#     result_pixels.extend(buff)
+# 
+#     with open('result_with_logo.bmp', 'wb') as new_f:
+#         new_f.write(original_header)
+#         new_f.write(result_pixels)
