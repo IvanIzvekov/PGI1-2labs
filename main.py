@@ -93,63 +93,69 @@ def get_bmp_info(file):
 
 # 3lab
 
-# def add_random_border(input_file, output_file):
-#     with open(input_file, 'rb') as f:
-#         header = f.read(54)
-#
-#         image_data = f.read()
-#
-#         width = int.from_bytes(header[18:22], byteorder='little')
-#         height = int.from_bytes(header[22:26], byteorder='little')
-#
-#         new_image_data = bytearray()
-#         for x in range(width):
-#             for y in range(height):
-#                 new_image_data.extend(image_data[y * width * 3 + x * 3 : y * width * 3 + x * 3 + 3])
-#
-#             padding = b'\x00' * (4 - (len(new_image_data) % 4)) if len(new_image_data) % 4 != 0 else b''
-#             new_image_data.extend(padding)
-#
-#         new_header = bytearray(header)
-#         new_header[18:22] = height.to_bytes(4, byteorder='little')
-#         new_header[22:26] = width.to_bytes(4, byteorder='little')
-#
-#         with open(output_file, 'wb') as new_f:
-#             new_f.write(new_header)
-#             new_f.write(new_image_data)
-#
-# input_file = '_сarib_TC.bmp'
-# output_file = '_carib_TC_rotate.bmp'
-#
-# add_random_border(input_file, output_file)
+def add_random_border(input_file, output_file):
+    with open(input_file, 'rb') as f:
+        header = f.read(54)
+
+        image_data = f.read()
+
+        width = int.from_bytes(header[18:22], byteorder='little')
+        height = int.from_bytes(header[22:26], byteorder='little')
+
+        new_image_data = bytearray()
+        for x in range(width):
+            for y in range(height):
+                new_image_data.extend(image_data[y * width * 3 + x * 3 : y * width * 3 + x * 3 + 3])
+
+            padding = b'\x00' * (4 - (len(new_image_data) % 4)) if len(new_image_data) % 4 != 0 else b''
+            new_image_data.extend(padding)
+
+        new_header = bytearray(header)
+        new_header[18:22] = height.to_bytes(4, byteorder='little')
+        new_header[22:26] = width.to_bytes(4, byteorder='little')
+
+        with open(output_file, 'wb') as new_f:
+            new_f.write(new_header)
+            new_f.write(new_image_data)
+
+input_file = '_сarib_TC.bmp'
+output_file = '_carib_TC_rotate.bmp'
+
+add_random_border(input_file, output_file)
 
 # 5lab ДОДЕЛАТЬ
 
 # import struct
-# 
+#
 # # Открываем исходный BMP файл
-# with open('CAT256.BMP', 'rb') as file:
-#     header = file.read(54)
-#     pallet = file.read(1024)
-#     pixels = file.read()
-# 
+# file = open('CAT256.BMP', 'rb')
+# header = file.read(54)
+# pallet = file.read(1024)
+# pixels = bytearray()
+#
 # # Получаем ширину и высоту изображения из заголовка
 # width = struct.unpack('<i', header[18:22])[0]
 # height = struct.unpack('<i', header[22:26])[0]
-# 
+# old_pad = 4 - width % 4
+# for y in range(height):
+#     pixels.extend(file.read(width))
+#     file.read(old_pad)
+#
+#
 # # Создаем список коэффициентов масштабирования от 0.1 до 10
 # scaling_factors = [0.1, 0.5, 1, 2, 5]
-# 
+#
 # # Применяем каждый коэффициент масштабирования к изображению
 # for factor in scaling_factors:
 #     # Масштабируем изображение
 #     new_width = int(width * factor)
 #     new_size = int(len(pixels) * factor ** 2 + 54 + 1024)
 #     new_height = int(height * factor)
-# 
+#
 #     scaled_pixels = bytearray()
 #     count = 0
 #     for y in range(new_height):
+#
 #         buff = bytearray()
 #         for x in range(new_width):
 #             orig_x = int(x / factor)
@@ -166,15 +172,14 @@ def get_bmp_info(file):
 #     new_header[18:22] = new_width.to_bytes(4, byteorder='little')
 #     new_header[22:26] = new_height.to_bytes(4, byteorder='little')
 #     new_header[2:6] = new_size.to_bytes(4, byteorder='little')
-# 
+#
 #     # Записываем новый BMP файл с масштабированным изображением
 #     with open(f'scaled_image_{factor}.bmp', 'wb') as new_file:
 #         new_file.write(new_header)
 #         new_file.write(pallet)
 #         new_file.write(scaled_pixels)
 #     print(f'Масштабирование {factor} завершено')
-# 
+#
 # print("Масштабирование завершено")
 # get_bmp_info('CAT256.BMP')
 # get_bmp_info('scaled_image_1.bmp')
-
