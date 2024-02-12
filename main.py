@@ -187,44 +187,44 @@ def get_bmp_info(file):
 # lab 6
 
 # import struct
-# 
-# 
+#
+#
 # file = open('_сarib_TC.bmp', 'rb')
 # original_header = file.read(54)
 # original_pixels = bytearray()
-# 
+#
 # original_width = struct.unpack('<i', original_header[18:22])[0]
 # original_height = struct.unpack('<i', original_header[22:26])[0]
-# 
+#
 # print(original_width)
 # print(original_height)
-# 
-# 
+#
+#
 # old_pad = 4 - (original_width * 3) % 4
 # for y in range(original_height):
 #     original_pixels.extend(file.read(original_width * 3))
 #     if old_pad > 0 and old_pad != 4:
 #         file.read(old_pad)
-# 
+#
 # file = open('logo.bmp', 'rb')
 # logo_header = file.read(54)
 # trash = file.read(84)
 # logo_pixels = bytearray()
-# 
+#
 # logo_width = struct.unpack('<i', logo_header[18:22])[0]
 # logo_height = struct.unpack('<i', logo_header[22:26])[0]
-# 
+#
 # for y in range(logo_height):
 #     for x in range(logo_width):
 #         logo_pixels.extend(file.read(3))
 #         file.read(1)
-# 
+#
 # x_margin = 675
 # y_margin = 25
 # transparency = 0.3
-# 
+#
 # result_pixels = bytearray()
-# 
+#
 # for y in range(original_height):
 #     buff = bytearray()
 #     for x in range(original_width):
@@ -237,15 +237,134 @@ def get_bmp_info(file):
 #                     buff.append(one_byte)
 #             else:
 #                 buff.append(original_pixels[y * original_width * 3 + x * 3 + i])
-# 
+#
 #     if len(buff) % 4 != 0:
 #         padding = b'\x00' * (4 - (len(buff) % 4))
 #     else:
 #         padding = b''
-# 
+#
 #     buff.extend(padding)
 #     result_pixels.extend(buff)
-# 
+#
 #     with open('result_with_logo.bmp', 'wb') as new_f:
 #         new_f.write(original_header)
 #         new_f.write(result_pixels)
+
+
+# lab 8
+
+# import numpy as np
+# import matplotlib.pyplot as plt
+#
+# def DecodePCX(filePath):
+#     with open(filePath, 'rb') as file:
+#         header = file.read(128)
+#
+#         depth = int.from_bytes(header[3:4], 'little')
+#
+#         width = header[8] + (header[9] << 8) - header[4] - (header[5] << 8) + 1
+#         height = header[10] + (header[11] << 8) - header[6] - (header[7] << 8) + 1
+#
+#         file.seek(-768, 2)
+#         palette = np.frombuffer(file.read(), dtype=np.uint8).reshape((256, 3))
+#         graphImg = np.zeros((height, width, 3), dtype=np.uint8)
+#
+#         file.seek(128)
+#         x, y = 0, 0
+#         while y < height:
+#             x = 0
+#             while x < width:
+#                 byte = int.from_bytes(file.read(1), 'little')
+#                 if byte < 192:
+#                     graphImg[y, x] = palette[byte]
+#                     x += 1
+#                 else:
+#                     count = byte - 192
+#                     repeatedByte = int.from_bytes(file.read(1), 'little')
+#                     if count == 1 and repeatedByte == 0:
+#                         continue
+#
+#                     for _ in range(count):
+#                         if x >= width:
+#                             break
+#                         graphImg[y, x] = palette[repeatedByte]
+#                         x += 1
+#             y += 1
+#
+#     plt.imshow(graphImg)
+#     plt.axis('off')
+#     plt.show()
+#
+#
+# DecodePCX("200001.PCX")
+
+# lab7
+
+import struct
+
+
+def convert_to_bin(s: str):
+    c = 0b0
+    for i in s:
+        c = c | int(i)
+        c = c << 1
+    c = c >> 1
+    return c
+
+
+file = open('_сarib_TC.bmp', 'rb')
+header = file.read(54)
+file_size = int.from_bytes(header[2:6], byteorder='little')
+
+width = struct.unpack('<i', header[18:22])[0]
+height = struct.unpack('<i', header[22:26])[0]
+
+pixels = bytearray()
+
+old_pad = 4 - (width * 3) % 4
+for y in range(height):
+    pixels.extend(file.read(width * 3))
+    if old_pad > 0 and old_pad != 4:
+        file.read(old_pad)
+
+size_mass = [1, 2, 4, 8]
+
+t = 0b11111111
+b = "text from file"
+w = ''
+for i in b:
+    w += (format(ord(i), '08b'))
+
+for iteration in size_mass:
+    new_image = bytearray()
+    step = 0
+    for y in range(height):
+        buff = bytearray()
+        for x in range(width):
+            for i in range(3):
+                c = w[step:step + iteration]
+                c = c[::-1]
+                step += iteration
+                if step + iteration >= len(w):
+                    step = 0
+
+                temp = pixels[y * width * 3 + x * 3 + i]
+                temp = temp >> iteration
+                temp = temp << iteration
+                temp2 = convert_to_bin(c)
+                temp = temp | temp2
+                # if i > 0:
+                #     temp = pixels[y * width * 3 + x * 3 + i]
+                buff.append(temp)
+
+        if len(buff) % 4 != 0:
+            padding = b'\x00' * (4 - (len(buff) % 4))
+        else:
+            padding = b''
+
+        buff.extend(padding)
+        new_image.extend(buff)
+
+    with open(f'result_stenography_{iteration}.bmp', 'wb') as new_f:
+        new_f.write(header)
+        new_f.write(new_image)
