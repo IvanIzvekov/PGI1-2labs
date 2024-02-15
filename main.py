@@ -368,3 +368,165 @@ for iteration in size_mass:
     with open(f'result_stenography_{iteration}.bmp', 'wb') as new_f:
         new_f.write(header)
         new_f.write(new_image)
+
+
+# izvekov RGR 
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def colorPicker(new_palette, color):
+    temp = tuple(color)
+    if temp in new_palette:
+        return color
+    else:
+        min = 999999
+        min_color = ()
+        for i in new_palette:
+            delta = pow((temp[0] - i[0]), 2) + pow((temp[1] - i[1]), 2) + pow((temp[2] - i[2]), 2)
+            if delta < min:
+                min = delta
+                min_color = i
+        return min_color
+
+
+def Convert256PCXTo16PCX(filePath):
+    with open(filePath, 'rb') as file:
+        header = file.read(128)
+        new_header = bytearray(header)
+        depth = int.from_bytes(header[3:4], 'little')
+        new_depth = 2
+        width = header[8] + (header[9] << 8) - header[4] - (header[5] << 8) + 1
+        height = header[10] + (header[11] << 8) - header[6] - (header[7] << 8) + 1
+        new_palette_byte = bytearray()
+        file.seek(-768, 2)
+        palette = np.frombuffer(file.read(), dtype=np.uint8).reshape((256, 3))
+        graphImg = np.zeros((height, width, 3), dtype=np.uint8)
+
+        all_color = {}
+
+        file.seek(128)
+        x, y = 0, 0
+        while y < height:
+            x = 0
+            while x < width:
+                byte = int.from_bytes(file.read(1), 'little')
+                if byte < 192:
+                    graphImg[y, x] = palette[byte]
+
+                    temp = tuple(palette[byte])
+                    if temp in all_color:
+                        all_color[temp] += 1
+                    else:
+                        all_color[temp] = 1
+
+                    x += 1
+                else:
+                    count = byte - 192
+                    repeatedByte = int.from_bytes(file.read(1), 'little')
+                    if count == 1 and repeatedByte == 0:
+                        continue
+
+                    for _ in range(count):
+                        if x >= width:
+                            break
+                        graphImg[y, x] = palette[repeatedByte]
+
+                        temp = tuple(palette[repeatedByte])
+                        if temp in all_color:
+                            all_color[temp] += 1
+                        else:
+                            all_color[temp] = 1
+                        x += 1
+            y += 1
+        # plt.imshow(graphImg)
+        # plt.axis('off')
+        # plt.show()
+
+        count = 0
+        new_palette = []
+        for w in sorted(all_color, key=all_color.get, reverse=True):
+            if count == 16:
+                break
+            temp = []
+            for i in range(3):
+                if w[i] + 25 >= 256:
+                    correct = 255
+                    temp.append(correct)
+                    new_palette_byte.extend(correct.to_bytes(1, byteorder='little'))
+                else:
+                    correct = w[i] + 25
+                    temp.append(correct)
+                    new_palette_byte.extend(correct)
+            new_palette.append(temp)
+            count += 1
+
+        new_header[3:4] = new_depth.to_bytes(4, byteorder='little')
+        new_header[16:64] = new_palette_byte
+        file.seek(128)
+        x, y = 0, 0
+        while y < height:
+            x = 0
+            while x < width:
+                byte = int.from_bytes(file.read(1), 'little')
+                if byte < 192:
+                    graphImg[y, x] = colorPicker(new_palette, palette[byte])
+                    x += 1
+                else:
+                    count = byte - 192
+                    repeatedByte = int.from_bytes(file.read(1), 'little')
+                    if count == 1 and repeatedByte == 0:
+                        continue
+                    for _ in range(count):
+                        if x >= width:
+                            break
+                        graphImg[y, x] = colorPicker(new_palette, palette[repeatedByte])
+                        x += 1
+            y += 1
+
+    # plt.imshow(graphImg)
+    # plt.axis('off')
+    # plt.show()
+
+    result_pixels = bytearray()
+    y = 0
+    while y < height:
+        x = 0
+        #    2 2  2
+        count_repeat = 1
+        graph_str = []
+        while x < width:
+            graph_str.append(tuple(graphImg[y, x]))
+            x += 1
+        while i < len(graph_str):
+            if i != len(graph_str) - 1:
+                while graph_str[i] == graph_str[i + 1]:
+                    count_repeat += 1
+                    i += 1
+                    if i == len(graph_str) - 1:
+                        break
+                    if count_repeat == 63:
+                        break
+                if count_repeat > 1:
+                    result_pixels.extend((192 + count_repeat).to_bytes(1, byteorder='little'))
+                    for item in graph_str:
+                        temp.append(item)
+                    color_index_in_pallet = new_palette.index(temp)
+                    result_pixels.extend(color_index_in_pallet.to_bytes(1, byteorder='little'))
+                    count_repeat = 1
+                else:
+                    for item in graph_str:
+                        temp.append(item)
+                    color_index_in_pallet = new_palette.index(temp)
+                    result_pixels.extend(color_index_in_pallet.to_bytes(1, byteorder='little'))
+                i += 1
+        y += 1
+
+    with open('Converted16.PCX', 'wb') as new_f:
+        new_f.write(new_header)
+        new_f.write(result_pixels)
+
+
+Convert256PCXTo16PCX("200001.PCX")
