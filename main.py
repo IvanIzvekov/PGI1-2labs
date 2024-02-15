@@ -37,6 +37,155 @@ def get_bmp_info(file):
         print(f'Pixel array offset: {pixel_array_offset}')
 
 
+
+# Kostin RGR 
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def colorPicker(new_palette, color):
+    temp = tuple(color)
+    if temp in new_palette:
+        return color
+    else:
+        min = 999999
+        min_color = ()
+        for i in new_palette:
+            delta = pow((temp[0] - i[0]), 2) + pow((temp[1] - i[1]), 2) + pow((temp[2] - i[2]), 2)
+            if delta < min:
+                min = delta
+                min_color = i
+        return min_color
+
+
+import struct
+
+
+def Convert256BMPTo16PCX(filePath):
+    with open(filePath, 'rb') as file:
+        header = file.read(54)
+        palette = np.frombuffer(file.read(1024), dtype=np.uint8).reshape((256, 4))
+        pixels = bytearray()
+
+        # Получаем ширину и высоту изображения из заголовка
+        width = struct.unpack('<i', header[18:22])[0]
+        height = struct.unpack('<i', header[22:26])[0]
+        old_pad = 4 - width % 4
+        for y in range(height):
+            pixels.extend(file.read(width))
+            file.read(old_pad)
+
+        graphImg = np.zeros((height, width, 3), dtype=np.uint8)
+
+        all_color = {}
+
+        for y in range(height):
+            for x in range(width):
+                byte = pixels[y * width + x]
+                graphImg[abs(height - 1 - y), x] = [palette[byte][2], palette[byte][1], palette[byte][0]]
+                if (palette[byte][2], palette[byte][1], palette[byte][0]) in all_color:
+                    all_color[(palette[byte][2], palette[byte][1], palette[byte][0])] += 1
+                else:
+                    all_color[(palette[byte][2], palette[byte][1], palette[byte][0])] = 1
+        plt.imshow(graphImg)
+        plt.axis('off')
+        plt.show()
+
+    new_palette = []
+    new_palette_byte = bytearray()
+    count = 0
+    for w in sorted(all_color, key=all_color.get, reverse=True):
+        if count == 16:
+            break
+        temp = []
+        for i in range(3):
+            if w[i] + 25 >= 256:
+                correct = 255
+                temp.append(correct)
+                new_palette_byte.extend(correct.to_bytes(1, byteorder='little'))
+            else:
+                correct = w[i] + 25
+                temp.append(correct)
+                new_palette_byte.extend(correct)
+        new_palette.append(temp)
+        count += 1
+
+    for y in range(height):
+        for x in range(width):
+            byte = pixels[y * width + x]
+            graphImg[abs(height - 1 - y), x] = colorPicker(new_palette,
+                                                           (palette[byte][2], palette[byte][1], palette[byte][0]))
+    plt.imshow(graphImg)
+    plt.axis('off')
+    plt.show()
+
+    new_header = bytearray(128)
+
+    new_header[0:1] = int(10).to_bytes(1, byteorder='little')
+    new_header[1:2] = int(5).to_bytes(1, byteorder='little')
+    new_header[2:3] = int(1).to_bytes(1, byteorder='little')
+    new_header[3:4] = int(2).to_bytes(1, byteorder='little') # мб 8 бит
+    new_header[4:6] = int(0).to_bytes(2, byteorder='little')
+    new_header[6:8] = int(0).to_bytes(2, byteorder='little')
+    new_header[8:10] = width.to_bytes(2, byteorder='little')
+    new_header[10:12] = height.to_bytes(2, byteorder='little')
+    new_header[12:14] = int(96).to_bytes(2, byteorder='little')
+    new_header[14:16] = int(96).to_bytes(2, byteorder='little')
+    for item in new_palette:
+        for i in item:
+            new_header.extend(int(i).to_bytes(1, byteorder='little'))
+    # new_header[16:64] = new_palette_byte
+    new_header[64:65] = int(0).to_bytes(1, byteorder='little')
+    new_header[65:66] = int(1).to_bytes(1, byteorder='little')
+    new_header[66:68] = int(552).to_bytes(2, byteorder='little')
+    new_header[68:70] = int(1).to_bytes(2, byteorder='little')
+    new_header[70:128] = int(0).to_bytes(58, byteorder='little')
+
+
+
+    result_pixels = bytearray()
+    y = 0
+    while y < height:
+        x = 0
+
+        count_repeat = 1
+        graph_str = []
+        while x < width:
+            graph_str.append(tuple(graphImg[y, x]))
+            x += 1
+        i = 0
+        while i < len(graph_str) - 1:
+            while graph_str[i] == graph_str[i + 1]:
+                count_repeat += 1
+                i += 1
+                if i == len(graph_str) - 1:
+                    break
+                if count_repeat == 63:
+                    break
+            if count_repeat > 1:
+                result_pixels.extend((192 + count_repeat).to_bytes(1, byteorder='little'))
+                temp = []
+                for item in graph_str[i]:
+                    temp.append(item)
+                color_index_in_pallet = new_palette.index(temp)
+                result_pixels.extend(color_index_in_pallet.to_bytes(1, byteorder='little'))
+                count_repeat = 1
+            else:
+                temp = []
+                for item in graph_str[i]:
+                    temp.append(item)
+                color_index_in_pallet = new_palette.index(temp)
+                result_pixels.extend(color_index_in_pallet.to_bytes(1, byteorder='little'))
+            i += 1
+        y += 1
+
+    with open('Converted16.PCX', 'wb') as new_f:
+        new_f.write(new_header)
+        new_f.write(result_pixels)
+
+
+Convert256BMPTo16PCX("CAT256.BMP")
+
 # input_file = 'CAT256.BMP'
 # output_file = 'CAT256_gray.BMP'
 #
